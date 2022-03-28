@@ -1,0 +1,52 @@
+version: "3"
+
+services:
+  go:
+    build: ./docker/go
+    ports:
+      - 8080:8080
+    container_name: go
+    command: bash -c "go run api/main.go"
+    depends_on:
+      - mysql
+    volumes:
+      - ./api:/app/api
+  
+  mysql:
+    image: mysql:8.0
+    ports:
+      - 3306:3306
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: go_database
+      MYSQL_USER: go_grpc
+      MYSQL_PASSWORD: password
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - ./docker/db/my.cnf:/etc/mysql/conf.d/my.conf
+
+  frontend:
+    build: ./docker/frontend
+    ports:
+      - 3000:3000
+    container_name: frontend
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./frontend/:/usr/src/app
+    command: sh -c 'yarn install && yarn start'
+    depends_on:
+      - go
+
+  nginx:
+    image: nginx
+    container_name: nginx
+    ports:
+      - 80:80
+    environment:
+      - TZ=Asia/Tokyo
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - frontend
